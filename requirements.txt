@@ -1,0 +1,9 @@
+# Traffic Monitor — Dépendances
+# Installer avec : pip install -r requirements.txt
+
+ultralytics>=8.3.0        # YOLOv11 + ByteTrack intégré
+supervision>=0.23.0       # Tracking, annotations, métriques
+flask>=3.0.0              # Serveur web
+opencv-python-headless>=4.9.0  # Traitement vidéo (sans GUI Qt)
+numpy>=1.26.0             # Calculs matriciels
+Werkzeug>=3.0.0           # Upload sécurisé (inclus avec Flask)
