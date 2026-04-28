@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Live Camera — Traffic Monitor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0e1a; --surface: #111827; --surface2: #1a2235;
+      --border: #1e2d45; --accent: #00d4ff; --green: #10b981;
+      --red: #ef4444; --text: #e2e8f0; --muted: #64748b;
+      --font: 'Space Grotesk', sans-serif; --mono: 'JetBrains Mono', monospace;
+    }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+
+    header {
+      border-bottom: 1px solid var(--border); padding: 1rem 2rem;
+      display: flex; align-items: center; gap: 1rem; background: var(--surface);
+    }
+    .logo { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), #7c3aed); border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 16px; }
+    header h1 { font-size: 1rem; font-weight: 600; flex: 1; }
+    .back-btn { color: var(--muted); text-decoration: none; font-size: .85rem; transition: color .2s; }
+    .back-btn:hover { color: var(--accent); }
+    .live-dot { width: 8px; height: 8px; background: var(--red); border-radius: 50%; animation: pulse 1.2s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+    .container { display: grid; grid-template-columns: 1fr 300px; gap: 1.5rem; padding: 1.5rem; max-width: 1400px; margin: 0 auto; }
+
+    /* ── Setup panel (before start) ── */
+    .setup-panel {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 16px; padding: 2rem; text-align: center;
+    }
+    .setup-panel h2 { font-size: 1.2rem; font-weight: 700; margin-bottom: .5rem; }
+    .setup-panel p { color: var(--muted); font-size: .9rem; margin-bottom: 1.5rem; }
+    .cam-icon { font-size: 4rem; margin-bottom: 1rem; }
+
+    /* ── Classes grid ── */
+    .classes-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; margin-bottom: 1.5rem; text-align: left; }
+    .class-toggle { display: flex; align-items: center; gap: .5rem; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; padding: .5rem .8rem; cursor: pointer; transition: all .2s; user-select: none; }
+    .class-toggle input { display: none; }
+    .class-toggle:has(input:checked) { border-color: var(--accent); background: rgba(0,212,255,.08); }
+    .class-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .class-toggle span { font-size: .8rem; }
+
+    /* ── Start button ── */
+    .btn-start {
+      width: 100%; padding: .9rem; background: linear-gradient(135deg, var(--accent), #0099cc);
+      border: none; border-radius: 10px; color: #000; font-family: var(--font);
+      font-size: 1rem; font-weight: 700; cursor: pointer; transition: opacity .2s;
+    }
+    .btn-start:hover { opacity: .9; }
+
+    /* ── Video panel ── */
+    .video-panel { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; overflow: hidden; display: none; }
+    .video-panel.active { display: block; }
+    .video-header { padding: .8rem 1.2rem; display: flex; align-items: center; gap: .6rem; border-bottom: 1px solid var(--border); }
+    .video-header h2 { font-size: .85rem; font-weight: 500; flex: 1; }
+    .video-stream { width: 100%; display: block; background: #000; min-height: 360px; }
+
+    /* ── Sidebar ── */
+    .sidebar { display: flex; flex-direction: column; gap: 1rem; }
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem; }
+    .card-title { font-size: .65rem; font-family: var(--mono); color: var(--muted); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 1rem; }
+
+    .total-box { text-align: center; padding: 1rem; background: rgba(0,212,255,.06); border: 1px solid rgba(0,212,255,.2); border-radius: 10px; }
+    .total-num { font-size: 2.5rem; font-weight: 700; font-family: var(--mono); color: var(--accent); }
+    .total-lbl { font-size: .75rem; color: var(--muted); margin-top: .2rem; }
+
+    .counter-row { display: flex; align-items: center; gap: .7rem; margin-bottom: .65rem; }
+    .counter-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .counter-label { font-size: .85rem; flex: 1; }
+    .counter-val { font-family: var(--mono); font-size: 1.1rem; font-weight: 500; color: var(--accent); min-width: 2.5rem; text-align: right; transition: transform .2s; }
+    .counter-val.bump { transform: scale(1.3); }
+    .counter-bar-wrap { height: 3px; background: var(--border); border-radius: 2px; margin-top: .25rem; }
+    .counter-bar { height: 3px; border-radius: 2px; transition: width .5s ease; }
+
+    .info-row { display: flex; justify-content: space-between; margin-bottom: .5rem; font-size: .82rem; }
+    .info-row .lbl { color: var(--muted); }
+    .info-row .val { font-family: var(--mono); }
+
+    .btn-stop {
+      width: 100%; padding: .9rem; background: rgba(239,68,68,.15);
+      border: 1px solid rgba(239,68,68,.4); border-radius: 10px; color: #f87171;
+      font-family: var(--font); font-size: .85rem; font-weight: 600; cursor: pointer;
+    }
+    .btn-stop:hover { background: rgba(239,68,68,.25); }
+
+    /* Colors */
+    .c-person { background: #ff6432; }
+    .c-bicycle { background: #32dc64; }
+    .c-car { background: #3296ff; }
+    .c-motorcycle { background: #c832ff; }
+    .c-bus { background: #ffc800; }
+    .c-truck { background: #00b4ff; }
+
+    @media (max-width: 768px) { .container { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">📷</div>
+  <h1>Traffic Monitor</h1>
+  <div class="live-dot" style="margin-left:.5rem;" id="live-dot" style="display:none;"></div>
+  <span style="font-size:.75rem;color:var(--muted);margin-left:.3rem;" id="live-label"></span>
+  <a href="/" class="back-btn">← Back to upload</a>
+</header>
+
+<div class="container">
+
+  <!-- Setup panel / Video panel -->
+  <div id="setup-panel" class="setup-panel">
+    <div class="cam-icon">📷</div>
+    <h2>Live Camera Detection</h2>
+    <p>Use your webcam to detect and count traffic objects in real time.<br/>No video upload needed.</p>
+
+    <div class="classes-grid" id="classes-grid">
+      {% set class_colors = {
+        'person': 'c-person', 'bicycle': 'c-bicycle', 'car': 'c-car',
+        'motorcycle': 'c-motorcycle', 'bus': 'c-bus', 'truck': 'c-truck'
+      } %}
+      {% set class_icons = {
+        'person': '🚶', 'bicycle': '🚲', 'car': '🚗',
+        'motorcycle': '🏍️', 'bus': '🚌', 'truck': '🚛'
+      } %}
+      {% for cname in class_names %}
+      <label class="class-toggle">
+        <input type="checkbox" name="classes" value="{{ cname }}" checked/>
+        <div class="class-dot {{ class_colors.get(cname, '') }}"></div>
+        <span>{{ class_icons.get(cname,'') }} {{ cname }}</span>
+      </label>
+      {% endfor %}
+    </div>
+
+    <button class="btn-start" onclick="startCamera()">📷 Start Camera Detection</button>
+  </div>
+
+  <!-- Video stream (hidden until started) -->
+  <div class="video-panel" id="video-panel">
+    <div class="video-header">
+      <h2>📷 Live Camera Feed</h2>
+      <div class="live-dot"></div>
+      <span style="font-size:.75rem;color:var(--muted);font-family:var(--mono);margin-left:.3rem;">LIVE</span>
+    </div>
+    <img class="video-stream" id="webcam-stream" src="" alt="Live camera feed"/>
+  </div>
+
+  <!-- Sidebar -->
+  <div class="sidebar">
+
+    <div class="card">
+      <div class="total-box">
+        <div class="total-num" id="total-count">0</div>
+        <div class="total-lbl">unique objects counted</div>
+      </div>
+    </div>
+
+    <div class="card" id="counters-card" style="display:none;">
+      <div class="card-title">Counters per class</div>
+      <div id="counters-body"></div>
+    </div>
+
+    <div class="card" id="session-card" style="display:none;">
+      <div class="card-title">Session info</div>
+      <div class="info-row"><span class="lbl">Frame</span><span class="val" id="frame-num">—</span></div>
+      <div class="info-row"><span class="lbl">Elapsed</span><span class="val" id="elapsed">—</span></div>
+      <div class="info-row"><span class="lbl">Source</span><span class="val">Webcam</span></div>
+    </div>
+
+    <button class="btn-stop" id="btn-stop" style="display:none;" onclick="stopCamera()">
+      ⏹ Stop Camera
+    </button>
+
+    <a href="/dashboard" style="display:block;text-align:center;padding:.9rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;color:var(--accent);text-decoration:none;font-size:.85rem;font-weight:600;">
+      📊 View Dashboard →
+    </a>
+
+  </div>
+</div>
+
+<script>
+let polling = false;
+let prevCounts = {};
+const CLASS_COLORS = {
+  person:'c-person', bicycle:'c-bicycle', car:'c-car',
+  motorcycle:'c-motorcycle', bus:'c-bus', truck:'c-truck'
+};
+const CLASS_ICONS = {
+  person:'🚶', bicycle:'🚲', car:'🚗',
+  motorcycle:'🏍️', bus:'🚌', truck:'🚛'
+};
+
+function getSelectedClasses() {
+  return [...document.querySelectorAll('input[name="classes"]:checked')]
+    .map(el => el.value);
+}
+
+function startCamera() {
+  const classes = getSelectedClasses();
+  if (classes.length === 0) {
+    alert('Please select at least one class.');
+    return;
+  }
+
+  const classesParam = classes.join(',');
+
+  // Show video panel, hide setup
+  document.getElementById('setup-panel').style.display = 'none';
+  document.getElementById('video-panel').classList.add('active');
+  document.getElementById('btn-stop').style.display = 'block';
+  document.getElementById('counters-card').style.display = 'block';
+  document.getElementById('session-card').style.display = 'block';
+
+  // Build counters UI
+  const body = document.getElementById('counters-body');
+  body.innerHTML = classes.map(c => `
+    <div>
+      <div class="counter-row">
+        <div class="counter-dot ${CLASS_COLORS[c] || ''}"></div>
+        <span class="counter-label">${CLASS_ICONS[c] || ''} ${c}</span>
+        <span class="counter-val" id="cnt-${c}">0</span>
+      </div>
+      <div class="counter-bar-wrap">
+        <div class="counter-bar ${CLASS_COLORS[c] || ''}" id="bar-${c}" style="width:0%"></div>
+      </div>
+    </div>
+  `).join('');
+
+  // Start stream
+  document.getElementById('webcam-stream').src = `/webcam_feed?classes=${classesParam}`;
+
+  // Start polling
+  polling = true;
+  pollStats();
+}
+
+function stopCamera() {
+  polling = false;
+  document.getElementById('webcam-stream').src = '';
+  document.getElementById('video-panel').classList.remove('active');
+  document.getElementById('setup-panel').style.display = 'block';
+  document.getElementById('btn-stop').style.display = 'none';
+  document.getElementById('total-count').textContent = '0';
+}
+
+async function pollStats() {
+  if (!polling) return;
+  try {
+    const r = await fetch('/api/stats');
+    const d = await r.json();
+
+    document.getElementById('total-count').textContent = d.total || 0;
+    document.getElementById('frame-num').textContent   = d.frame || '—';
+    document.getElementById('elapsed').textContent     = d.timestamp ? d.timestamp.toFixed(1) + 's' : '—';
+
+    const maxVal = Math.max(1, ...Object.values(d.counts || {}));
+    for (const [cname, count] of Object.entries(d.counts || {})) {
+      const el  = document.getElementById('cnt-' + cname);
+      const bar = document.getElementById('bar-' + cname);
+      if (el) {
+        if (count !== (prevCounts[cname] || 0)) {
+          el.classList.add('bump');
+          setTimeout(() => el.classList.remove('bump'), 250);
+        }
+        el.textContent = count;
+      }
+      if (bar) bar.style.width = ((count / maxVal) * 100) + '%';
+    }
+    prevCounts = {...(d.counts || {})};
+
+  } catch(e) {}
+
+  if (polling) setTimeout(pollStats, 500);
+}
+</script>
+
+</body>
+</html>

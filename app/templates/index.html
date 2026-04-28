@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Traffic Monitor — CV Project 2026</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:       #0a0e1a;
+      --surface:  #111827;
+      --surface2: #1a2235;
+      --border:   #1e2d45;
+      --accent:   #00d4ff;
+      --accent2:  #7c3aed;
+      --green:    #10b981;
+      --text:     #e2e8f0;
+      --muted:    #64748b;
+      --font:     'Space Grotesk', sans-serif;
+      --mono:     'JetBrains Mono', monospace;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 1.2rem 2rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      background: var(--surface);
+    }
+    .logo {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px;
+    }
+    header h1 { font-size: 1.1rem; font-weight: 600; letter-spacing: -.02em; }
+    header span { font-size: .8rem; color: var(--muted); font-family: var(--mono); }
+    .nav-links { margin-left: auto; display: flex; gap: 1.5rem; }
+    .nav-links a {
+      color: var(--muted); text-decoration: none; font-size: .9rem;
+      transition: color .2s;
+    }
+    .nav-links a:hover { color: var(--accent); }
+
+    /* ── Hero ── */
+    .hero {
+      text-align: center;
+      padding: 4rem 2rem 2rem;
+    }
+    .hero-badge {
+      display: inline-block;
+      background: rgba(0,212,255,.1);
+      border: 1px solid rgba(0,212,255,.3);
+      color: var(--accent);
+      font-size: .75rem;
+      font-family: var(--mono);
+      padding: .3rem .8rem;
+      border-radius: 100px;
+      margin-bottom: 1.5rem;
+      letter-spacing: .05em;
+    }
+    .hero h2 {
+      font-size: clamp(1.8rem, 4vw, 3rem);
+      font-weight: 700;
+      letter-spacing: -.03em;
+      line-height: 1.15;
+      margin-bottom: 1rem;
+    }
+    .hero h2 span { color: var(--accent); }
+    .hero p { color: var(--muted); max-width: 520px; margin: 0 auto; line-height: 1.7; }
+
+    /* ── Stats bar ── */
+    .stats-bar {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin: 2.5rem auto;
+      max-width: 600px;
+    }
+    .stat-item { text-align: center; }
+    .stat-item .val {
+      font-size: 1.6rem;
+      font-weight: 700;
+      font-family: var(--mono);
+      color: var(--accent);
+    }
+    .stat-item .lbl { font-size: .75rem; color: var(--muted); margin-top: .2rem; }
+
+    /* ── Main layout ── */
+    main {
+      flex: 1;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 2rem 4rem;
+      width: 100%;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 1.5rem;
+    }
+    .card-title {
+      font-size: .7rem;
+      font-family: var(--mono);
+      color: var(--muted);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      margin-bottom: 1.2rem;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .card-title::before {
+      content: '';
+      width: 6px; height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+    }
+
+    /* ── Drop zone ── */
+    .drop-zone {
+      border: 2px dashed var(--border);
+      border-radius: 12px;
+      padding: 3rem 2rem;
+      text-align: center;
+      cursor: pointer;
+      transition: all .25s;
+      position: relative;
+    }
+    .drop-zone:hover, .drop-zone.dragover {
+      border-color: var(--accent);
+      background: rgba(0,212,255,.04);
+    }
+    .drop-zone input[type="file"] {
+      position: absolute; inset: 0;
+      opacity: 0; cursor: pointer; width: 100%; height: 100%;
+    }
+    .drop-icon { font-size: 2.5rem; margin-bottom: .8rem; }
+    .drop-zone h3 { font-size: 1rem; font-weight: 600; margin-bottom: .4rem; }
+    .drop-zone p { font-size: .85rem; color: var(--muted); }
+    .drop-zone .file-selected {
+      margin-top: .8rem;
+      font-family: var(--mono);
+      font-size: .8rem;
+      color: var(--green);
+    }
+
+    /* ── Existing videos ── */
+    .video-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: .75rem;
+      margin-top: .5rem;
+    }
+    .video-item {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: .75rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: .75rem;
+      cursor: pointer;
+      transition: border-color .2s;
+    }
+    .video-item:hover { border-color: var(--accent); }
+    .video-item.selected { border-color: var(--accent); background: rgba(0,212,255,.07); }
+    .video-item .vi-icon { font-size: 1.2rem; }
+    .video-item .vi-name { font-size: .82rem; font-family: var(--mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ── Classes grid ── */
+    .classes-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .6rem;
+    }
+    .class-toggle {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .6rem .9rem;
+      cursor: pointer;
+      transition: all .2s;
+      user-select: none;
+    }
+    .class-toggle input { display: none; }
+    .class-toggle:has(input:checked) {
+      border-color: var(--accent);
+      background: rgba(0,212,255,.08);
+    }
+    .class-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .class-toggle span { font-size: .85rem; }
+
+    /* ── Scene input ── */
+    .scene-input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: .7rem 1rem;
+      color: var(--text);
+      font-family: var(--font);
+      font-size: .9rem;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .scene-input:focus { border-color: var(--accent); }
+
+    /* ── Submit button ── */
+    .btn-submit {
+      width: 100%;
+      padding: 1rem;
+      background: linear-gradient(135deg, var(--accent), #0099cc);
+      border: none;
+      border-radius: 10px;
+      color: #000;
+      font-family: var(--font);
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: -.01em;
+      transition: opacity .2s, transform .1s;
+      margin-top: .5rem;
+    }
+    .btn-submit:hover { opacity: .9; transform: translateY(-1px); }
+    .btn-submit:active { transform: translateY(0); }
+
+    /* ── Flash messages ── */
+    .flash { background: rgba(239,68,68,.15); border: 1px solid rgba(239,68,68,.3);
+      color: #fca5a5; border-radius: 8px; padding: .8rem 1rem; margin-bottom: 1rem; font-size: .9rem; }
+
+    /* ── Colors ── */
+    .c-person     { background: #ff6432; }
+    .c-bicycle    { background: #32dc64; }
+    .c-car        { background: #3296ff; }
+    .c-motorcycle { background: #c832ff; }
+    .c-bus        { background: #ffc800; }
+    .c-truck      { background: #00b4ff; }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🚦</div>
+  <div>
+    <h1>Traffic Monitor</h1>
+    <span>Computer Vision — April 2026</span>
+  </div>
+  <nav class="nav-links">
+    <a href="/">Home</a>
+    <a href="/webcam">📷 Live Camera</a>
+    <a href="/dashboard">Dashboard</a>
+  </nav>
+</header>
+
+<div class="hero">
+  <div class="hero-badge">YOLOv11 + ByteTrack + Flask</div>
+  <h2>Detection & counting<br/><span>of road traffic objects</span></h2>
+  <p>Upload a video, choose the object classes to detect, and visualize tracking results in real time.</p>
+</div>
+
+<div class="stats-bar">
+  <div class="stat-item"><div class="val">6</div><div class="lbl">Detectable classes</div></div>
+  <div class="stat-item"><div class="val">30+</div><div class="lbl">FPS processing</div></div>
+  <div class="stat-item"><div class="val">2</div><div class="lbl">Minimum scenes</div></div>
+</div>
+
+<main>
+  {% with messages = get_flashed_messages() %}
+    {% if messages %}
+      {% for m in messages %}<div class="flash">{{ m }}</div>{% endfor %}
+    {% endif %}
+  {% endwith %}
+
+  <form action="/upload" method="POST" enctype="multipart/form-data" id="upload-form">
+
+    <!-- Video upload -->
+    <div class="card">
+      <div class="card-title">Video source</div>
+      <div class="drop-zone" id="drop-zone">
+        <input type="file" name="video" id="file-input" accept="video/*" onchange="onFileSelected(this)"/>
+        <div class="drop-icon">🎬</div>
+        <h3>Drag your video here</h3>
+        <p>or click to browse · mp4, avi, mov, mkv</p>
+        <div class="file-selected" id="file-label"></div>
+      </div>
+
+      {% if videos %}
+      <div style="margin-top:1.2rem;">
+        <div class="card-title" style="margin-bottom:.8rem;">Already uploaded videos</div>
+        <div class="video-list">
+          {% for v in videos %}
+          <div class="video-item" onclick="selectExisting('{{ v }}', this)">
+            <span class="vi-icon">📹</span>
+            <span class="vi-name">{{ v }}</span>
+          </div>
+          {% endfor %}
+        </div>
+        <input type="hidden" name="existing_video" id="existing-video"/>
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Scene name (optional) -->
+    <div class="card">
+      <div class="card-title">Scene name <span style="color:var(--muted);font-size:.7rem;">(optional — defaults to video filename)</span></div>
+      <input type="text" name="scene_name" class="scene-input"
+             placeholder="e.g. Dakar - Roundabout, Highway intersection... (leave blank for auto)"
+             id="scene-input"/>
+    </div>
+
+    <!-- Classes to detect -->
+    <div class="card">
+      <div class="card-title">Classes to track</div>
+      <div class="classes-grid">
+        {% set class_colors = {
+          'person': 'c-person', 'bicycle': 'c-bicycle', 'car': 'c-car',
+          'motorcycle': 'c-motorcycle', 'bus': 'c-bus', 'truck': 'c-truck'
+        } %}
+        {% set class_icons = {
+          'person': '🚶', 'bicycle': '🚲', 'car': '🚗',
+          'motorcycle': '🏍️', 'bus': '🚌', 'truck': '🚛'
+        } %}
+        {% for cname in class_names %}
+        <label class="class-toggle">
+          <input type="checkbox" name="classes" value="{{ cname }}" checked/>
+          <div class="class-dot {{ class_colors.get(cname, '') }}"></div>
+          <span>{{ class_icons.get(cname, '●') }} {{ cname }}</span>
+        </label>
+        {% endfor %}
+      </div>
+    </div>
+
+    <button type="submit" class="btn-submit">▶ Start Detection</button>
+
+  </form>
+</main>
+
+<script>
+  // Drag & drop
+  const dz = document.getElementById('drop-zone');
+  dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+  dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+  dz.addEventListener('drop', e => {
+    e.preventDefault(); dz.classList.remove('dragover');
+    const f = e.dataTransfer.files[0];
+    if (f) {
+      document.getElementById('file-input').files = e.dataTransfer.files;
+      onFileSelected({files:[f]});
+      // Désélectionner toute vidéo existante
+      document.querySelectorAll('.video-item').forEach(e => e.classList.remove('selected'));
+      document.getElementById('existing-video').value = '';
+    }
+  });
+
+  function onFileSelected(input) {
+    const f = input.files[0];
+    if (f) {
+      document.getElementById('file-label').textContent = '✓ ' + f.name;
+      // Désélectionner toute vidéo existante
+      document.querySelectorAll('.video-item').forEach(e => e.classList.remove('selected'));
+      document.getElementById('existing-video').value = '';
+    }
+  }
+
+  function selectExisting(name, el) {
+    // Sélectionner visuellement
+    document.querySelectorAll('.video-item').forEach(e => e.classList.remove('selected'));
+    el.classList.add('selected');
+
+    // Mettre le nom dans le champ caché
+    document.getElementById('existing-video').value = name;
+
+    // Vider le file input pour éviter le conflit
+    document.getElementById('file-input').value = '';
+    document.getElementById('file-label').textContent = '✓ Selected: ' + name;
+  }
+</script>
+
+</body>
+</html>

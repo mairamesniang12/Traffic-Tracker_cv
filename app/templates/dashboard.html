@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Global Dashboard — Traffic Monitor</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0a0e1a; --surface: #111827; --surface2: #1a2235;
+      --border: #1e2d45; --accent: #00d4ff; --accent2: #7c3aed;
+      --green: #10b981; --text: #e2e8f0; --muted: #64748b;
+      --font: 'Space Grotesk', sans-serif; --mono: 'JetBrains Mono', monospace;
+    }
+    body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+
+    header {
+      border-bottom: 1px solid var(--border); padding: 1rem 2rem;
+      display: flex; align-items: center; gap: 1rem; background: var(--surface);
+    }
+    .logo { width: 32px; height: 32px; background: linear-gradient(135deg, var(--accent), var(--accent2)); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+    header h1 { font-size: 1rem; font-weight: 600; flex: 1; }
+    .back-btn { color: var(--muted); text-decoration: none; font-size: .85rem; transition: color .2s; }
+    .back-btn:hover { color: var(--accent); }
+
+    main { max-width: 1200px; margin: 0 auto; padding: 2rem; }
+
+    .section-title {
+      font-size: .65rem; font-family: var(--mono); color: var(--muted);
+      letter-spacing: .1em; text-transform: uppercase;
+      margin-bottom: 1.2rem; display: flex; align-items: center; gap: .5rem;
+    }
+    .section-title::before { content: ''; width: 6px; height: 6px; background: var(--accent); border-radius: 50%; }
+
+    .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; margin-bottom: 1.5rem; }
+
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem; text-align: center; }
+    .stat-card .big { font-size: 2rem; font-weight: 700; font-family: var(--mono); color: var(--accent); }
+    .stat-card .lbl { font-size: .75rem; color: var(--muted); margin-top: .3rem; }
+
+    .scenes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
+    .scene-card { background: var(--surface2); border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem; }
+    .scene-name { font-size: .95rem; font-weight: 600; margin-bottom: .8rem; }
+    .scene-total { font-size: 1.6rem; font-weight: 700; font-family: var(--mono); color: var(--green); }
+    .scene-lbl { font-size: .72rem; color: var(--muted); }
+    .class-pills { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .8rem; }
+    .pill { font-size: .72rem; font-family: var(--mono); padding: .2rem .6rem; border-radius: 100px; border: 1px solid var(--border); color: var(--muted); }
+    .pill.has-val { color: var(--accent); border-color: rgba(0,212,255,.3); background: rgba(0,212,255,.05); }
+
+    .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 1.5rem; }
+    .chart-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 1.5rem; }
+    .chart-title { font-size: .8rem; font-weight: 600; margin-bottom: 1.2rem; color: var(--text); }
+    .chart-container { position: relative; height: 250px; }
+
+    .empty { text-align: center; padding: 4rem 2rem; color: var(--muted); }
+    .empty .icon { font-size: 3rem; margin-bottom: 1rem; }
+    .empty p { margin-bottom: 1.5rem; }
+    .empty a { display: inline-block; padding: .7rem 1.5rem; background: rgba(0,212,255,.1); border: 1px solid rgba(0,212,255,.3); color: var(--accent); text-decoration: none; border-radius: 8px; font-size: .9rem; }
+
+    @media (max-width: 700px) { .charts-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">📊</div>
+  <h1>Global Dashboard — Traffic Monitor</h1>
+  <a href="/" class="back-btn">← Analyze a video</a>
+  <a href="/download_logs?format=json"
+     style="margin-left:1rem;padding:.4rem .9rem;background:rgba(0,212,255,.1);border:1px solid rgba(0,212,255,.3);border-radius:6px;color:#00d4ff;text-decoration:none;font-size:.8rem;font-weight:600;">
+    ⬇ JSON
+  </a>
+  <a href="/download_logs?format=csv"
+     style="margin-left:.5rem;padding:.4rem .9rem;background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);border-radius:6px;color:#10b981;text-decoration:none;font-size:.8rem;font-weight:600;">
+    ⬇ CSV
+  </a>
+</header>
+
+<main>
+
+{% if scenes %}
+
+  <!-- Global summary -->
+  {% set total_all = scenes | sum(attribute='total') %}
+  <div class="summary-grid">
+    <div class="stat-card">
+      <div class="big">{{ scenes | length }}</div>
+      <div class="lbl">Scenes analyzed</div>
+    </div>
+    <div class="stat-card">
+      <div class="big">{{ total_all }}</div>
+      <div class="lbl">Unique objects (total)</div>
+    </div>
+    <div class="stat-card">
+      <div class="big">{{ (scenes | map(attribute='duration_s') | sum / 60) | round(1) }}</div>
+      <div class="lbl">Minutes of video processed</div>
+    </div>
+    <div class="stat-card">
+      <div class="big">{{ (total_all / [scenes | length, 1] | max) | round(0) | int }}</div>
+      <div class="lbl">Avg. objects / scene</div>
+    </div>
+  </div>
+
+  <!-- Scene cards -->
+  <div class="section-title">Details per scene</div>
+  <div class="scenes-grid">
+    {% for s in scenes %}
+    <div class="scene-card">
+      <div class="scene-name">📍 {{ s.scene_name }}</div>
+      <div class="scene-total">{{ s.total }}</div>
+      <div class="scene-lbl">unique objects · {{ (s.duration_s / 60) | round(1) }} min</div>
+      <div class="class-pills">
+        {% for cname, cnt in s.counts.items() %}
+        <span class="pill {% if cnt > 0 %}has-val{% endif %}">{{ cname }}: {{ cnt }}</span>
+        {% endfor %}
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Charts -->
+  <div class="charts-grid">
+    <div class="chart-wrap">
+      <div class="chart-title">🚗 Objects per class (all scenes)</div>
+      <div class="chart-container">
+        <canvas id="chart-classes"></canvas>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <div class="chart-title">📍 Scene comparison (total)</div>
+      <div class="chart-container">
+        <canvas id="chart-scenes"></canvas>
+      </div>
+    </div>
+  </div>
+
+  {% if scenes | selectattr('temporal') | list %}
+  <div class="card">
+    <div class="chart-title">⏱️ Temporal traffic distribution</div>
+    <div class="chart-container">
+      <canvas id="chart-temporal"></canvas>
+    </div>
+  </div>
+  {% endif %}
+
+{% else %}
+
+  <div class="empty">
+    <div class="icon">📭</div>
+    <p>No scenes analyzed yet.<br/>Process a video to see the data here.</p>
+    <a href="/">Analyze a video →</a>
+  </div>
+
+{% endif %}
+
+</main>
+
+<script>
+const scenes = {{ scenes_json | safe }};
+
+const CLASS_COLORS = {
+  person:     'rgba(255,100,50,.8)',
+  bicycle:    'rgba(50,220,100,.8)',
+  car:        'rgba(50,150,255,.8)',
+  motorcycle: 'rgba(200,50,255,.8)',
+  bus:        'rgba(255,200,0,.8)',
+  truck:      'rgba(0,180,255,.8)',
+};
+
+Chart.defaults.color = '#94a3b8';
+Chart.defaults.font.family = 'Space Grotesk';
+
+const gridColor = 'rgba(255,255,255,.05)';
+
+if (scenes.length > 0) {
+
+  // ── Chart 1: objects per class ────────────────────────────────────────
+  const classTotals = {};
+  scenes.forEach(s => {
+    Object.entries(s.counts || {}).forEach(([c, v]) => {
+      classTotals[c] = (classTotals[c] || 0) + v;
+    });
+  });
+
+  new Chart(document.getElementById('chart-classes'), {
+    type: 'bar',
+    data: {
+      labels: Object.keys(classTotals),
+      datasets: [{
+        label: 'Total objects',
+        data: Object.values(classTotals),
+        backgroundColor: Object.keys(classTotals).map(c => CLASS_COLORS[c] || 'rgba(0,212,255,.6)'),
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: gridColor }, ticks: { color: '#94a3b8' } },
+        y: { grid: { color: gridColor }, ticks: { color: '#94a3b8' }, beginAtZero: true }
+      }
+    }
+  });
+
+  // ── Chart 2: scene comparison ─────────────────────────────────────────
+  new Chart(document.getElementById('chart-scenes'), {
+    type: 'doughnut',
+    data: {
+      labels: scenes.map(s => s.scene_name),
+      datasets: [{
+        data: scenes.map(s => s.total),
+        backgroundColor: [
+          'rgba(0,212,255,.7)', 'rgba(124,58,237,.7)',
+          'rgba(16,185,129,.7)', 'rgba(245,158,11,.7)'
+        ],
+        borderWidth: 2,
+        borderColor: '#111827'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { labels: { color: '#94a3b8', font: { size: 11 } } }
+      }
+    }
+  });
+
+  // ── Chart 3: temporal distribution ───────────────────────────────────
+  const temporalCanvas = document.getElementById('chart-temporal');
+  if (temporalCanvas) {
+    const sceneWithTemporal = scenes.find(s => s.temporal && s.temporal.length > 0);
+    if (sceneWithTemporal) {
+      const temporal = sceneWithTemporal.temporal;
+      new Chart(temporalCanvas, {
+        type: 'line',
+        data: {
+          labels: temporal.map(t => t.interval_start + 's'),
+          datasets: [{
+            label: sceneWithTemporal.scene_name,
+            data: temporal.map(t => t.total),
+            borderColor: 'rgba(0,212,255,.9)',
+            backgroundColor: 'rgba(0,212,255,.08)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 3,
+            pointBackgroundColor: '#00d4ff',
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { labels: { color: '#94a3b8' } } },
+          scales: {
+            x: { grid: { color: gridColor }, ticks: { color: '#94a3b8' } },
+            y: { grid: { color: gridColor }, ticks: { color: '#94a3b8' }, beginAtZero: true }
+          }
+        }
+      });
+    }
+  }
+}
+</script>
+
+</body>
+</html>
